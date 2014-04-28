@@ -116,7 +116,12 @@ namespace Microsoft.Net.Runtime.Roslyn
                 }
                 else
                 {
+#if NET45
                     result = compilationContext.Compilation.Emit(assemblyStream, pdbStream: pdbStream, manifestResources: resources);
+#else
+                    //diasmreader not working on CoreSystemServer yet
+                    result = compilationContext.Compilation.Emit(assemblyStream, manifestResources: resources);
+#endif
                 }
 
                 sw.Stop();
