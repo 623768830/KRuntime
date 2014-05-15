@@ -1,0 +1,102 @@
+@{/*
+    The goals for build IBC trained KRE
+*/}
+use assembly="System.Xml.Linq, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"
+use assembly="System.IO.Compression.FileSystem, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"
+use namespace="System"
+use namespace="System.IO"
+
+var BASE_DIR='${Directory.GetCurrentDirectory()}'
+var PERF_TEST_DROP=''
+var RAW_BUILD_DIR='${Path.Combine(BASE_DIR, "artifacts", "build")}'
+var WORKSPACE_DIR='${Path.Combine(BASE_DIR, "workspace")}'
+var LOCAL_KRE_HOME_DIR='${Path.Combine(BASE_DIR, "workspace", "kre_home")}'
+var PERF_DIR='${Path.Combine(BASE_DIR, "workspace", "perf")}'
+var PERF_SAMPLE_DIR='${Path.Combine(BASE_DIR, "workspace", "perf", "apps", "webfx", "HelloMvc")}'
+var LATEST_PERF_DROP='${@"\\bpdfiles01\CommonShare\trdai\Performance\Drops"}'
+
+var nupkgPaths = '${new string[] {
+    Files.Include(Path.Combine(RAW_BUILD_DIR, "KRE-svr50-x86.*.nupkg")).Single(),
+    Files.Include(Path.Combine(RAW_BUILD_DIR, "KRE-svr50-x64.*.nupkg")).Single(),
+    Files.Include(Path.Combine(RAW_BUILD_DIR, "KRE-svrc50-x86.*.nupkg")).Single(),
+    Files.Include(Path.Combine(RAW_BUILD_DIR, "KRE-svrc50-x64.*.nupkg")).Single(),
+}}'
+
+var rawPackageVersion=''
+var corex86bin=''
+var corex64bin=''
+var net45x86bin=''
+var net45x64bin=''
+
+var BBSWEEP_PATH='${Environment.GetEnvironmentVariable("BBSWEEP_PATH")}'
+var IBCMERGE_PATH='${Environment.GetEnvironmentVariable("IBCMERGE_PATH")}'
+var PFUTIL_PATH='${Environment.GetEnvironmentVariable("PFUTIL_PATH")}'
+
+
+#build-ibc .ibc-initialize
+
+#ibc-validate
+    test if='!Directory.Exists(RAW_BUILD_DIR)'
+        log warn='${RAW_BUILD_DIR} doesn`t exist'
+    for each='var path in nupkgPaths'
+        log warn='test ${path}'
+    test if='BBSWEEP_PATH==null'
+        @{ throw new InvalidOperationException("Environment variable BBSWEEP_PATH doesn`t exist."); }
+    test if='!File.Exists(BBSWEEP_PATH)'
+        @{ throw new InvalidOperationException("Environment variable BBSWEEP_PATH points a file doesn`t exist."); }
+    test if='IBCMERGE_PATH==null'
+        @{ throw new InvalidOperationException("Environment variable IBCMERGE_PATH doesn`t exist."); }
+    test if='!File.Exists(IBCMERGE_PATH)'
+        @{ throw new InvalidOperationException("Environment variable IBCMERGE_PATH points a file doesn`t exist."); }
+    test if='PFUTIL_PATH==null'
+        @{ throw new InvalidOperationException("Environment variable PFUTIL_PATH doesn`t exist."); }
+    test if='!File.Exists(PFUTIL_PATH)'
+        @{ throw new InvalidOperationException("Environment variable PFUTIL_PATH points a file doesn`t exist."); }
+
+#ibc-initialize .ibc-validate
+    directory delete='${WORKSPACE_DIR}'
+    directory create='${WORKSPACE_DIR}'
+    directory create='${LOCAL_KRE_HOME_DIR}'
+    copy sourceDir='${LATEST_PERF_DROP}' outputDir='${PERF_DIR}'
+    @{
+        Environment.SetEnvironmentVariable("KRE_HOME", LOCAL_KRE_HOME_DIR);
+    }
+    for each='var nupkgPath in nupkgPaths'
+        @{
+            var kreName = Path.GetFileNameWithoutExtension(nupkgPath);
+            var krePath = Path.Combine(LOCAL_KRE_HOME_DIR, kreName);
+
+            Log.Info("Unpacking " + nupkgPath); 
+            if (Directory.Exists(krePath)) {
+                Directory.Delete(krePath, recursive:true); 
+            }
+
+            Directory.CreateDirectory(krePath);
+            System.IO.Compression.ZipFile.ExtractToDirectory(nupkgPath, krePath);
+            rawPackageVersion = kreName.Substring(kreName.LastIndexOf("-") + 1);
+
+            if (krePath.Contains("x86")) {
+                if (krePath.Contains("svrc")) {
+                    corex86bin = Path.Combine(krePath, "bin");
+                }
+                else {
+                    net45x86bin = Path.Combine(krePath, "bin");
+                }
+            }
+            else {
+                if (krePath.Contains("svrc")) {
+                    corex64bin = Path.Combine(krePath, "bin");
+                }
+                else {
+                    net45x64bin = Path.Combine(krePath, "bin");
+                }
+            }
+        }
+    log info='${"KRE HOME is: " + Environment.GetEnvironmentVariable("KRE_HOME")}'
+    log info='${string.Format("{0}\n{1}\n{2}\n{3}", corex64bin, corex86bin, net45x64bin, net45x86bin)}'
+
+#ibc-tuned-module
+
+#ibc-train
+
+#ibc-package

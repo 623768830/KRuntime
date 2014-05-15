@@ -10,6 +10,7 @@ default Configuration='Release'
 
 use-standard-lifecycle
 k-standard-goals
+ibc-training-goals
 
 var ROOT = '${Directory.GetCurrentDirectory()}'
 var SCRIPTS_DIR = '${Path.Combine(ROOT, "scripts")}'

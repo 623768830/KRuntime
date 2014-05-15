@@ -1,0 +1,3 @@
+default flavor='coreclr'
+
+log log="SET KRE_HOME"
